@@ -142,6 +142,9 @@ let INPUT_PACKET = {
 }
 let INPUT_PACKET_OLD = JSON.parse(JSON.stringify(INPUT_PACKET));
 
+let AUTO_LOOP_INTERVAL = null;
+let AUTO_LOOP_ENABLED = false;
+
 let PRO_CONTROLLER_DISPLAY = {
     // Sticks
     "L_STICK": {
@@ -309,6 +312,19 @@ window.addEventListener("gamepaddisconnected", function(evt) {
     CONTROLLER_INDEX = false;
     gamepadInput = document.getElementById(evt.gamepad.id);
     gamepadInput.remove();
+});
+
+// Auto loop toggle event listener
+document.addEventListener('DOMContentLoaded', function() {
+    const autoLoopToggle = document.getElementById('auto-loop-toggle');
+    const loopDuration = document.getElementById('loop-duration');
+    
+    if (autoLoopToggle) {
+        autoLoopToggle.addEventListener('change', function() {
+            AUTO_LOOP_ENABLED = this.checked;
+            loopDuration.disabled = !this.checked;
+        });
+    }
 });
 
 /**********************************************/
@@ -644,7 +660,43 @@ function eventLoop() {
 
 function sendMacro() {
     let macro = HTML_MACRO_TEXT.value.toUpperCase();
-    socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, macro]));
+    
+    if (AUTO_LOOP_ENABLED) {
+        const loopDuration = document.getElementById('loop-duration').value;
+        const duration = parseFloat(loopDuration) * 1000; // Convert to milliseconds
+        const stopBtn = document.getElementById('stop-loop-btn');
+        
+        if (isNaN(duration) || duration <= 0) {
+            displayError('Please enter a valid duration greater than 0');
+            return;
+        }
+        
+        // Show stop button
+        stopBtn.classList.remove('hidden');
+        
+        // Send macro immediately
+        socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, macro]));
+        
+        // Set up auto loop
+        AUTO_LOOP_INTERVAL = setInterval(() => {
+            socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, macro]));
+        }, duration);
+        
+        console.log(`Auto loop started with ${duration}ms interval`);
+    } else {
+        // Single macro execution
+        socket.emit('macro', JSON.stringify([NXBT_CONTROLLER_INDEX, macro]));
+    }
+}
+
+function stopAutoLoop() {
+    if (AUTO_LOOP_INTERVAL) {
+        clearInterval(AUTO_LOOP_INTERVAL);
+        AUTO_LOOP_INTERVAL = null;
+        const stopBtn = document.getElementById('stop-loop-btn');
+        stopBtn.classList.add('hidden');
+        console.log('Auto loop stopped');
+    }
 }
 
 /**********************************************/
