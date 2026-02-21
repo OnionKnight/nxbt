@@ -227,7 +227,18 @@ class Nxbt():
         cm = _ControllerManager(state, self._bluetooth_lock)
         # Ensure a SystemExit exception is raised on SIGTERM
         # so that we can gracefully shutdown.
-        signal.signal(signal.SIGTERM, lambda sigterm_handler: sys.exit(0))
+        
+        # fixed bug where handler is looking for two arguments, but we were passing a lambda that only takes one.
+        """
+        Process Process-2:2:
+        Traceback (most recent call last):
+          File "/home/onionknight/dev/switch2/.venv/lib/python3.11/site-packages/nxbt/controller/server.py", line 106, in run
+            self.mainloop(itr, ctrl)
+          File "/home/onionknight/dev/switch2/.venv/lib/python3.11/site-packages/nxbt/controller/server.py", line 186, in mainloop
+            time.sleep(sleep_time)
+        sTypeError: Nxbt._command_manager.<locals>.<lambda>() takes 1 positional argument but 2 were given"""
+
+        signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(0))
 
         try:
             while True:
